@@ -115,9 +115,8 @@ scoped notation "𝑅" => resolvent
 def IsLowerBound (T : H →ₗ.[ℂ] H) (z : ℂ) (c : ℝ) : Prop := ∀ x : T.domain, c * ‖x‖ ≤ ‖T x - z • x‖
 
 lemma isLowerBound_neg {T : H →ₗ.[ℂ] H} {z : ℂ} {c : ℝ} (h : IsLowerBound T z c) :
-    IsLowerBound (-T) (-z) c := by
-  intro x
-  simp only [neg_apply, neg_smul, sub_neg_eq_add, norm_neg_add, h x]
+    IsLowerBound (-T) (-z) c :=
+  fun x ↦ by simpa [neg_apply, norm_neg_add] using h x
 
 lemma isLowerBound_of_right_le
     {T : H →ₗ.[ℂ] H} {z : ℂ} {c₁ c₂ : ℝ} (hle : c₁ ≤ c₂) (h : IsLowerBound T z c₂) :
@@ -136,9 +135,8 @@ lemma isLowerBound_closure
     obtain ⟨b, hb, hb'⟩ := mem_closure_iff_seq_limit.mp <|
       hT.graph_closure_eq_closure_graph ▸ T.closure.mem_graph x
     rw [nhds_prod_eq] at hb'
-    have hb₁ := hb'.fst.norm.const_mul c
-    have hb₂ := (hb'.snd.sub <| hb'.fst.const_smul z).norm
-    refine le_of_tendsto_of_tendsto' hb₁ hb₂ fun n ↦ ?_
+    refine le_of_tendsto_of_tendsto' (hb'.fst.norm.const_mul c)
+      ((hb'.snd.sub <| hb'.fst.const_smul z).norm) fun n ↦ ?_
     obtain ⟨y, hy₁, hy₂⟩ := (mem_graph_iff _).mp (hb n)
     exact hy₁ ▸ hy₂ ▸ h y
   · rwa [closure_def' hT]
@@ -224,9 +222,9 @@ lemma regularityDomain_isOpen (T : H →ₗ.[ℂ] H) : IsOpen T.regularityDomain
 
 /-- `T` and `T.closure` have the same regularity domain. -/
 lemma regularityDomain_closure (T : H →ₗ.[ℂ] H) :
-    T.closure.regularityDomain = T.regularityDomain := by
-  refine eq_of_le_of_ge (regularityDomain_antitone T.le_closure) ?_
-  exact fun _ ⟨c, hc, h⟩ ↦ ⟨c, hc, isLowerBound_closure h⟩
+    T.closure.regularityDomain = T.regularityDomain :=
+  eq_of_le_of_ge (regularityDomain_antitone T.le_closure)
+    fun _ ⟨c, hc, h⟩ ↦ ⟨c, hc, isLowerBound_closure h⟩
 
 lemma IsClosable.closure_range_sub_eq_range_closure_sub [CompleteSpace H]
     {T : H →ₗ.[ℂ] H} (hT : T.IsClosable) {z : ℂ} (hz : z ∈ T.regularityDomain) :
@@ -271,9 +269,9 @@ lemma IsClosable.closure_range_sub_eq_range_closure_sub [CompleteSpace H]
 
 lemma IsClosed.sub_range_isClosed [CompleteSpace H]
     {T : H →ₗ.[ℂ] H} (hT : T.IsClosed) {z : ℂ} (hz : z ∈ T.regularityDomain) :
-    _root_.IsClosed ((T - z • 1).toFun.range : Set H) := by
-  have hT' : T.closure = T := hT.isClosable.isClosed_iff.mp hT
-  exact (hT' ▸ hT.isClosable.closure_range_sub_eq_range_closure_sub hz) ▸ isClosed_closure
+    _root_.IsClosed ((T - z • 1).toFun.range : Set H) :=
+  (hT.isClosable.isClosed_iff.mp hT ▸
+    hT.isClosable.closure_range_sub_eq_range_closure_sub hz) ▸ isClosed_closure
 
 /-- `(T.closure - z • 1).rangeᗮ = (T† - conj z • 1).ker` -/
 lemma IsUnbounded.orthogonal_closure_sub_range [CompleteSpace H]
@@ -344,8 +342,7 @@ lemma IsClosed.defectNumber_eq_zero_iff [CompleteSpace H]
     {T : H →ₗ.[ℂ] H} (hT : T.IsClosed) {z : ℂ} (hz : z ∈ T.regularityDomain) :
     T.defectNumber z = 0 ↔ (T - z • 1).toFun.range = ⊤ := by
   haveI := hT.sub_range_isClosed hz -- needed for HasOrthogonalProjection
-  rw [← orthogonal_eq_bot_iff, ← rank_eq_zero]
-  exact Iff.rfl
+  exact rank_eq_zero.trans orthogonal_eq_bot_iff
 
 /-- `T` and `T.closure` have the same defect number at points in their regularity domain. -/
 lemma defectNumber_closure [CompleteSpace H]
@@ -408,8 +405,7 @@ lemma IsClosable.defectNumber_eq_of_mem_ball [CompleteSpace H] {T : H →ₗ.[�
         · simp [sub_smul, pow_two]
         rw [inner_sub_left, h', zero_sub, inner_smul_left, norm_neg, norm_mul, norm_conj, mul_assoc]
         exact mul_le_mul_of_nonneg_left (norm_inner_le_norm _ _) (norm_nonneg _)
-  · false_or_by_contra -- `z₁ ∉ T.regularityDomain` ⇒ `c ≤ 0` ⇒ `z₂ ∈ ∅`
-    exact hz₁ ⟨c, lt_of_le_of_lt dist_nonneg h_ball, h⟩
+  · exact absurd ⟨c, dist_nonneg.trans_lt h_ball, h⟩ hz₁
 
 /-- The defect number is constant on each connected component of the regularity domain. -/
 lemma IsClosable.defectNumber_const [CompleteSpace H]
@@ -469,8 +465,7 @@ lemma IsClosable.defectNumber_const [CompleteSpace H]
     apply h₁' ▸ h₂'
     rw [← defectNumber_eq_of_mem_ball hT hc_bound (hε_ball h₁)]
     rw [← defectNumber_eq_of_mem_ball hT hc_bound (hε_ball h₂)]
-  · false_or_by_contra
-    exact (mem_empty_iff_false z₂).mp (connectedComponentIn_eq_empty hz₁ ▸ hz)
+  · exact ((mem_empty_iff_false z₂).mp (connectedComponentIn_eq_empty hz₁ ▸ hz)).elim
 
 /-!
 ## C. Numerical range
@@ -492,8 +487,7 @@ lemma mem_numericalRange {T : H →ₗ.[ℂ] H} {x : T.domain} (hx : x ≠ 0) :
 
 lemma numericalRange_nonempty {T : H →ₗ.[ℂ] H} (hT : T.domain ≠ ⊥) : (Θ T).Nonempty := by
   obtain ⟨x, hx, hx'⟩ := exists_mem_ne_zero_of_ne_bot hT
-  use (‖x‖ ^ 2)⁻¹ * ⟪x, T ⟨x, hx⟩⟫_ℂ
-  exact mem_numericalRange (x := ⟨x, hx⟩) (Subtype.coe_ne_coe.mp hx')
+  exact ⟨_, mem_numericalRange (x := ⟨x, hx⟩) (Subtype.coe_ne_coe.mp hx')⟩
 
 @[simp]
 lemma numericalRange_neg (T : H →ₗ.[ℂ] H) : Θ (-T) = -Θ T := by
@@ -664,9 +658,7 @@ lemma mem_resolventSet_iff {T : H →ₗ.[ℂ] H} {z : ℂ} :
 
 /-- If an operator is not closed then its resolvent set is empty. -/
 lemma resolventSet_eq_empty [CompleteSpace H] {T : H →ₗ.[ℂ] H} (h : ¬T.IsClosed) : ρ T = ∅ := by
-  ext z
-  simp only [mem_empty_iff_false, iff_false]
-  by_contra ⟨h_ker, h_range, h_cont⟩
+  refine eq_empty_iff_forall_notMem.mpr fun z ⟨h_ker, h_range, h_cont⟩ ↦ ?_
   suffices (T - z • 1).IsClosed by
     have hTz : T - z • 1 + z • 1 = T :=
       eq_of_le_of_domain_eq (sub_add_le_cancel _ _) (by simp [add_domain, sub_domain])
@@ -695,12 +687,10 @@ lemma IsClosed.resolventSet_eq [CompleteSpace H] {T : H →ₗ.[ℂ] H} (hT : T.
 lemma IsClosed.resolventSet_eq' [CompleteSpace H] {T : H →ₗ.[ℂ] H} (hT : T.IsClosed) :
     ρ T = T.regularityDomain ∩ T.defectNumber ⁻¹' {0} := by
   ext z
-  constructor
-  · intro hρ
-    have hz : z ∈ T.regularityDomain := T.resolventSet_subset_regularityDomain hρ
+  refine ⟨fun hρ ↦ ?_, fun ⟨h_reg, h_defect⟩ ↦ ?_⟩
+  · have hz : z ∈ T.regularityDomain := T.resolventSet_subset_regularityDomain hρ
     exact ⟨hz, (hT.defectNumber_eq_zero_iff hz).mpr hρ.2.1⟩
-  · intro ⟨h_reg, h_defect⟩
-    obtain ⟨h_ker, h_cont⟩ := mem_regularityDomain_iff.mp h_reg
+  · obtain ⟨h_ker, h_cont⟩ := mem_regularityDomain_iff.mp h_reg
     exact ⟨h_ker, (hT.defectNumber_eq_zero_iff h_reg).mp h_defect, h_cont⟩
 
 /-- The resolvent set is an open subset of ℂ. -/
@@ -734,8 +724,7 @@ lemma spectrum_eq (T : H →ₗ.[ℂ] H) : σ T = (ρ T)ᶜ := rfl
 
 lemma mem_spectrum_iff {T : H →ₗ.[ℂ] H} {z : ℂ} :
     z ∈ σ T ↔ (T - z • 1).toFun.ker ≠ ⊥ ∨ (T - z • 1).toFun.range ≠ ⊤ ∨ ¬Continuous (𝑅 T z) := by
-  rw [spectrum_eq, mem_compl_iff, mem_resolventSet_iff]
-  tauto
+  simp only [spectrum_eq, mem_compl_iff, mem_resolventSet_iff, not_and_or, ne_eq]
 
 /-- If an operator is not closed then its spectrum is all of ℂ. -/
 lemma spectrum_eq_univ [CompleteSpace H] {T : H →ₗ.[ℂ] H} (h : ¬T.IsClosed) : σ T = univ :=
@@ -836,10 +825,8 @@ lemma IsClosed.spectrum_eq [CompleteSpace H] {T : H →ₗ.[ℂ] H} (hT : T.IsCl
   · refine union_subset ?_ T.continuousSpectrum_subset_spectrum
     exact union_subset T.pointSpectrum_subset_spectrum T.residualSpectrum_subset_spectrum
 
-lemma pointSpectrum_inter_residualSpectrum (T : H →ₗ.[ℂ] H) : σᵖ T ∩ σʳ T = ∅ := by
-  ext
-  simp only [mem_inter_iff, mem_empty_iff_false, iff_false, not_and]
-  exact fun h h' ↦ h h'.1
+lemma pointSpectrum_inter_residualSpectrum (T : H →ₗ.[ℂ] H) : σᵖ T ∩ σʳ T = ∅ :=
+  eq_empty_iff_forall_notMem.mpr fun _ ⟨h, h'⟩ ↦ h h'.1
 
 /-!
 ## E. Resolvent identities
